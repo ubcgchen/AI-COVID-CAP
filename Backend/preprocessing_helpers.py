@@ -333,6 +333,9 @@ def pca_transform(X, model):
 
     return X
 
+# This function does a few things:
+# 1) Remove all columns in the test dataset that are not in the preprocessed derivation dataset.
+# 2) Fills in lab values for troponin and ddimer.
 def consolidate_cols(df, model):
     # load the columns within the preprocessed dataset of interest.
     with open(model["scaler"], 'rb') as file:
@@ -360,6 +363,6 @@ def consolidate_cols(df, model):
 
     for key, value in labs.items():
         if key in df.columns:
-            df[key].fillna(value, inplace=True)
+            df[key] = df[key].fillna(value)
 
     return df

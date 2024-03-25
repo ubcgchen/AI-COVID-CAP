@@ -57,7 +57,7 @@ models = {
 
 curr_model = models[name]
 
-test_datasets = ["ARBsI_AI_data_part2-2023-04-25.csv", "ARBsI_AI_data_CAP_patients-2023-08-31.csv", "ARBsI_AI_data_CAP_patients-part2-2023-12-14.csv"]
+test_datasets = ["ARBsI_AI_data_part2-2023-04-25.csv", "ARBsI_AI_data_CAP_patients-2023-08-31.csv", "ARBsI_AI_data_CAP_patients-part2-2024-03-14.csv"]
 dataset_names = ["Part2", "CAP", "CAP2"]
 
 dataset_name = test_datasets[index]
