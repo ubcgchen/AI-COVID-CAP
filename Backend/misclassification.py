@@ -29,11 +29,17 @@ correct_path = 'Backend/Misclassification Analysis/correctly_classified_examples
 correct_data = pd.read_csv(correct_path, index_col = 0)
 
 def false_positive_negative_analysis():
-    # Example data
-    a = 51  # True positives
-    b = 15  # False negatives
-    c = 8  # False positives
-    d = 58  # True negatives
+    # VASO
+    # a = 43  # True positives
+    # b = 92  # False negatives
+    # c = 18   # False positives
+    # d = 490  # True negatives
+
+    # VENT
+    a = 43  # True positives
+    b = 81  # False negatives
+    c = 16   # False positives
+    d = 503  # True negatives
 
     # Create a 2x2 contingency table
     contingency_table = [[a, b], [c, d]]

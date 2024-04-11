@@ -11,7 +11,7 @@ import os
 # Fit curve to feature importances, remove features past inflection point.
 # re-train with SVM
 
-random_seed = None
+random_seed = 42
 
 def load_dataset():
     return pd.read_csv('Backend/Data/ARBsI_AI_data_part1-2023-04-25.csv')
@@ -109,3 +109,6 @@ def coordinate_pipeline(model, classifier):
     train_model(df_preprocessed, model, classifier)
 
 coordinate_pipeline(rrt, rfc)
+
+# for _ in range(1):
+#     coordinate_pipeline(vaso, rfc)

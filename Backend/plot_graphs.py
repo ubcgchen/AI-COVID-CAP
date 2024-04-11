@@ -16,8 +16,8 @@ def plot_roc():
             f'Backend/Graphs/fpr_tpr_rfc_CAP_',
             f'Backend/Graphs/fpr_tpr_rfc_CAP2_']
 
-    titles= ['Original COVID-19 Pneumonia Dataset',
-            'Unseen COVID-19 Pneumonia Dataset',
+    titles= ['Derivation COVID-19 Pneumonia Dataset',
+            'Validation COVID-19 Pneumonia Dataset',
             'CAP Dataset 1',
             'CAP Dataset 2',]
 
@@ -55,7 +55,7 @@ def plot_roc():
         plt.savefig('Backend/Graphs/' + file_names[index] + '.png')
 
 def plot_correlation_graphs():
-    index = 2 
+    index = 1
 
     models = [vaso, vent, rrt]
     preprocessed_datasets = ["Backend/Preprocessed Datasets/preprocessing_vaso.csv",
@@ -65,8 +65,8 @@ def plot_correlation_graphs():
                    "Backend/Model Metrics/importances_rfc_vent.xlsx",
                    "Backend/Model Metrics/importances_rfc_rrt.xlsx"]
 
-    x_labels = [["FiO2", "MAP", "GCS", "0", "2", "Other Ethnicity", "East Asian Ethnicity", "4", "1", "SaO2"],
-                ["FiO2", "MAP", "GCS", "2", "Other Ethnicity", "East Asian Ethnicity", "1", "0", "4", "AST"],
+    x_labels = [["FiO2", "MAP", "1", "GCS", "Other Ethnicity", "3", "SaO2", "East Asian Ethnicity", "AST", "2"],
+                ["FiO2", "MAP", "2", "Other Ethnicity", "GCS", "East Asian Ethnicity", "1", "0", "4", "AST"],
                 ["Creatinine", "0", "Potassium", "3", "SaO2", "Temperature", "CKD?", "Respiratory Rate", "Troponin", "Hemoglobin"]]
 
     model = models[index]
@@ -111,7 +111,7 @@ def plot_correlation_graphs():
     plt.savefig('Backend/Graphs/correlation_plot_' + model["name"] + '.png', dpi=300)  # Save the plot to a high-resolution image
 
 def plot_correlation_with_components():
-    index = 2
+    index = 1
 
     models = [vaso, vent, rrt]
     model = models[index]
@@ -163,8 +163,8 @@ def plot_correlation_with_components():
     df = pd.read_csv(preprocessed_datasets[index])
 
     # Specify the target variable (e.g., list4)
-    target_variables = [["0", "1", "2", "3", "4"],
-                        ["0", "1", "2", "3", "4", "5", "6"],
+    target_variables = [["0", "1", "2", "3"],
+                        ["0", "1", "4"],
                         ["0", "1", "2", "3"]]
 
     # Specify the variables you want to correlate with the target variables
@@ -175,7 +175,7 @@ def plot_correlation_with_components():
 
     # Extract the subset of the correlation matrix
     subset_correlation_matrix = correlation_matrix.loc[correlation_variables, target_variables[index]]
-    row_mask = (subset_correlation_matrix.abs() > 0.5).any(axis=1)
+    row_mask = (subset_correlation_matrix.abs() > 0.6).any(axis=1)
     subset_correlation_matrix = subset_correlation_matrix[row_mask]
     subset_correlation_matrix.rename(index=x_labels[index], inplace=True)
 
@@ -193,6 +193,7 @@ def plot_correlation_with_components():
     plt.tight_layout()
     plt.savefig('Backend/Graphs/PCA_HeatMap' + model["name"] + '.png', dpi=300)  # Save the plot to a high-resolution image
     
+plot_correlation_with_components()
 
 def plot_boxplots():
     y_labels = {
@@ -454,6 +455,3 @@ def plot_boxplots():
             
             # break
 
-
-
-plot_roc()

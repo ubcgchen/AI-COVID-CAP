@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 import os
+from openpyxl import load_workbook
 
 def calc_and_write_metrics(y_pred, y_test, y_prob_positive, model):
      # Calculate the metrics for the model
@@ -16,13 +17,19 @@ def calc_and_write_metrics(y_pred, y_test, y_prob_positive, model):
      roc_auc = auc(fpr, tpr)
 
      class_report = pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose()
+     values = [accuracy, sensitivity, specificity, ppv, npv, roc_auc]
 
      # Format data and write details to excel
      data = {
      'Metrics': ['Accuracy', 'Sensitivity', 'Specificity', 'PPV', 'NPV', "AUC ROC"],
-     'Values': [accuracy, sensitivity, specificity, ppv, npv, roc_auc]
+     'Values': values
      }
      metrics = pd.DataFrame(data)
+
+     # workbook = load_workbook(f'Backend/Model Metrics/metrics_{model}_list.xlsx')
+     # sheet = workbook.active
+     # sheet.append(values)
+     # workbook.save(f'Backend/Model Metrics/metrics_{model}_list.xlsx')
 
      # Write metrics to Excel
      metrics.to_excel(f'Backend/Model Metrics/metrics_{model}.xlsx', index=False)

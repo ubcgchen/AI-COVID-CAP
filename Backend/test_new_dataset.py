@@ -44,7 +44,7 @@ def balance_classes(X, y, random_seed=42):
 ################################
 
 # Change these variables to fit the dataset you want to test.
-name = "rrt"
+name = "vent"
 index = 2
 
 ################################

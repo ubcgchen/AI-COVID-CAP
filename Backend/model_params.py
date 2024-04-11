@@ -6,12 +6,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 
 vaso_params = {
-    "bootstrap": True,
-    "max_depth": None,
-    "max_features": 'log2',
-    "min_samples_leaf": 1,
-    "min_samples_split": 2,
-    "n_estimators": 200
+    "bootstrap": [True],
+    "max_depth": [None],
+    "max_features": ['log2'],
+    "min_samples_leaf": [1],
+    "min_samples_split": [2],
+    "n_estimators": [200]
 }
 
 vaso = {
@@ -31,12 +31,12 @@ vaso = {
 }
 
 vent_params = {
-    "bootstrap": True,
-    "max_depth": None,
-    "max_features": 'log2',
-    "min_samples_leaf": 1,
-    "min_samples_split": 2,
-    "n_estimators": 200
+    "bootstrap": [True],
+    "max_depth": [None],
+    "max_features": ['log2'],
+    "min_samples_leaf": [1],
+    "min_samples_split": [2],
+    "n_estimators": [200]
 }
 
 vent = {
@@ -56,12 +56,12 @@ vent = {
 }
 
 rrt_params = {
-    "bootstrap": True,
-    "max_depth": None,
-    "max_features": 'log2',
-    "min_samples_leaf": 1,
-    "min_samples_split": 5,
-    "n_estimators": 500
+    "bootstrap": [True],
+    "max_depth": [None],
+    "max_features": ['log2'],
+    "min_samples_leaf": [1],
+    "min_samples_split": [5],
+    "n_estimators": [500]
 }
 
 rrt = {
@@ -123,9 +123,8 @@ mlp_param_grid = {
 }
 
 
-
 rfc = {
-    "classifier": RandomForestClassifier(random_state=None),
+    "classifier": RandomForestClassifier(random_state=42),
     "name": "rfc",
     "param_grid": rfc_param_grid 
 }

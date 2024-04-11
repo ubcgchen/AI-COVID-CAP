@@ -16,7 +16,7 @@ from imblearn.pipeline import Pipeline
 from columns import *
 from model_params import *
 
-random_seed = None
+random_seed = 42
 
 # Drop all patients who died without ICU admission. This may indicate no time/space for ICU admission or advanced wishes (eg DNI, DNR, ...).
 # There are other variables that may confound lack of intervention.
