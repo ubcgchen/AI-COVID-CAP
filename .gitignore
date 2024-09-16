@@ -1,9 +1,10 @@
-Backend/Graphs/
-Backend/Data/
-Backend/Misclassification Analysis/
-Backend/Model Metrics/
-Backend/Preprocessed Datasets/
-UI/
+Backend/Graphs
+Backend/Data
+Backend/Misclassification Analysis
+Backend/Model Metrics
+Backend/Preprocessed Datasets
+Backend/__pycache__
+UI
 **/.DS_Store
 Metrics Summary.xlsx
 Metrics.xlsx
