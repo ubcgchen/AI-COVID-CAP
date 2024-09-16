@@ -1,3 +1,9 @@
+# Author:       George Chen
+# Date:         September 15, 2024
+# Email:        gschen@student.ubc.ca
+# Description:  This file contains important parameters associated with each model.
+
+# Imports
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 from xgboost import XGBClassifier

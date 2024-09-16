@@ -1,2 +1,10 @@
+Backend/Graphs/
 Backend/Data/
+Backend/Misclassification Analysis/
+Backend/Model Metrics/
+Backend/Preprocessed Datasets/
+UI/
 **/.DS_Store
+Metrics Summary.xlsx
+Metrics.xlsx
+*.pkl

@@ -1,45 +1,15 @@
-##
+# Author:       George Chen
+# Date:         September 15, 2024
+# Email:        gschen@student.ubc.ca
+# Description:  This file contains the code to allow for testing of the performance of a specified model with an unseen dataset.
 
-# For testing purposes.
-# This file allows you to test the performance of the model with a new, specified datset
-
-##
-
+# Imports
 import pandas as pd
 from utils import *
 from preprocessing_helpers import *
 from model_params import *
 import numpy as np
 import pickle
-
-# This function allows you to balance the classes in a dataset for testing.
-def balance_classes(X, y, random_seed=42):
-    # Combine X and y into a single dataframe for easy manipulation
-    df = pd.concat([X, y], axis=1)
-
-    # Determine which class is the majority and minority based on frequency
-    value_counts = y.value_counts()
-    majority_class_label = value_counts.idxmax()
-    minority_class_label = value_counts.idxmin()
-
-    # Separate the majority and minority classes
-    majority_class = df[y == majority_class_label]
-    minority_class = df[y == minority_class_label]
-
-    # Randomly undersample the majority class to match the size of the minority class
-    majority_class_undersampled = majority_class.sample(n=minority_class.shape[0], random_state=random_seed)
-
-    # Combine the minority class and the undersampled majority class
-    balanced_df = pd.concat([minority_class, majority_class_undersampled])
-
-    # Shuffle the rows to randomize the order
-    balanced_df = balanced_df.sample(frac=1, random_state=random_seed)
-
-    # Separate X and y again
-    X_balanced = balanced_df.drop(columns=y.name)
-    y_balanced = balanced_df[y.name]
-
-    return X_balanced, y_balanced
 
 ################################
 
@@ -57,6 +27,7 @@ models = {
 
 curr_model = models[name]
 
+# Available test datasets
 test_datasets = ["ARBsI_AI_data_part2-2023-04-25.csv", "ARBsI_AI_data_CAP_patients-2023-08-31.csv", "ARBsI_AI_data_CAP_patients-part2-2024-03-14.csv"]
 dataset_names = ["Part2", "CAP", "CAP2"]
 
@@ -135,8 +106,6 @@ with open(curr_model["model"], 'rb') as file:
 X = df.drop(curr_model["target"], axis=1)
 X.columns = X.columns.astype(str)
 y = df[curr_model["target"]]
-
-# X,y = balance_classes(X,y)
 
 y_pred = model.predict(X)
 y_pred = pd.Series(y_pred, index=y.index)

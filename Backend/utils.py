@@ -1,10 +1,20 @@
+# Author:       George Chen
+# Date:         September 15, 2024
+# Email:        gschen@student.ubc.ca
+# Description:  This file contains code of frequently used utility functions.
+
+# Imports
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import pandas as pd
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
-import os
-from openpyxl import load_workbook
 
+# Description:  This function calculates model metrics.
+# Inputs:       1) Predictions
+#               2) Ground truth
+#               3) Probability scores for predictions
+#               4) Model these metrics are claculated for (vasopressor, ventilator, or RRT)
+# Outputs:      ROC curves for each dataset.
 def calc_and_write_metrics(y_pred, y_test, y_prob_positive, model):
      # Calculate the metrics for the model
      accuracy = accuracy_score(y_test, y_pred)
@@ -26,15 +36,16 @@ def calc_and_write_metrics(y_pred, y_test, y_prob_positive, model):
      }
      metrics = pd.DataFrame(data)
 
-     # workbook = load_workbook(f'Backend/Model Metrics/metrics_{model}_list.xlsx')
-     # sheet = workbook.active
-     # sheet.append(values)
-     # workbook.save(f'Backend/Model Metrics/metrics_{model}_list.xlsx')
-
      # Write metrics to Excel
      metrics.to_excel(f'Backend/Model Metrics/metrics_{model}.xlsx', index=False)
      class_report.to_excel(f'Backend/Model Metrics/classification_report_{model}.xlsx', sheet_name='Classification Report')
 
+# Description:  This function calculates roc curves as a visualization of the models performance for the validation dataset.
+#               Serves as quick visualization tool. For the function that generates graphs for all data, see plot_roc in plot_graphs.py.
+# Inputs:       1) Predictions
+#               2) Probability scores for predictions
+#               4) Name of the endpoint this ROC curve is for.
+# Outputs:      ROC curves for validation dataset for inputted endpoint.
 def plot_roc_curve(y_test, y_prob_positive, model, intervention):
      fpr, tpr, _ = roc_curve(y_test, y_prob_positive)
      roc_auc = auc(fpr, tpr)

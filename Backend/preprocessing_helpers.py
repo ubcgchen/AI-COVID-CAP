@@ -1,3 +1,9 @@
+# Author:       George Chen
+# Date:         September 15, 2024
+# Email:        gschen@student.ubc.ca
+# Description:  This file contains the code to conduct the preprocessing pipeline.
+
+# Imports
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.impute import KNNImputer
 from sklearn.preprocessing import MinMaxScaler
@@ -16,7 +22,7 @@ from imblearn.pipeline import Pipeline
 from columns import *
 from model_params import *
 
-random_seed = 42
+random_seed = 42 # randomly chosen seed for reproducibility.
 
 # Drop all patients who died without ICU admission. This may indicate no time/space for ICU admission or advanced wishes (eg DNI, DNR, ...).
 # There are other variables that may confound lack of intervention.

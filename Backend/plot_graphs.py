@@ -1,3 +1,9 @@
+# Author:       George Chen
+# Date:         September 15, 2024
+# Email:        gschen@student.ubc.ca
+# Description:  This file contains the code to plot graphs to summarize the performance of our machine learning model.
+
+# Imports
 import pandas as pd
 from model_params import *
 import matplotlib.pyplot as plt
@@ -5,33 +11,42 @@ from sklearn.metrics import auc
 import seaborn as sns
 import numpy as np
 from scipy.stats import mannwhitneyu
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+from columns import feature_mapping
 
+# Description:  This function plots all ROC curves.
+# Inputs:       Nil
+# Outputs:      ROC curves for each dataset.
 def plot_roc():
     models = [vaso, vent, rrt]
     fpr_dict = {}
     tpr_dict = {}
 
+    # Data to plot for ROC curves
     paths = [f'Backend/Graphs/fpr_tpr_rfc_',
             f'Backend/Graphs/fpr_tpr_rfc_Part2_',
             f'Backend/Graphs/fpr_tpr_rfc_CAP_',
             f'Backend/Graphs/fpr_tpr_rfc_CAP2_']
-
+    
+    # Titles to be used for each curve
     titles= ['Derivation COVID-19 Pneumonia Dataset',
             'Validation COVID-19 Pneumonia Dataset',
             'CAP Dataset 1',
             'CAP Dataset 2',]
-
+    
+    # File names to be used for each curve
     file_names = ['roc_curve_OG',
                 'roc_curve_Part2',
                 'roc_curve_CAP',
                 'roc_curve_CAP2']
     
-
+    # Colour scheme to be used for each curve
     colors = [['Gold', 'DarkOrange', 'Firebrick'],
             ['lightgreen', 'cornflowerblue', 'black'],
             ['BurlyWood', 'OliveDrab', 'Chocolate'],
-            ['black', 'dimgray', 'lightgray']]  # Adjust these colors
-
+            ['black', 'dimgray', 'lightgray']] 
+    
+    # Plot ROC curves for each dataset.
     for index in range(0, 4):
         for model in models:
             path = f'{paths[index]}{model["name"]}.csv' 
@@ -54,45 +69,36 @@ def plot_roc():
 
         plt.savefig('Backend/Graphs/' + file_names[index] + '.png')
 
-def plot_correlation_graphs():
-    index = 1
+# Description:  This function plots the Pearson's correlation coefficient of the 10 features most correlated with the 
+#               specified target, by magnitude.
+# Inputs:       The model used to plot the graph (vasopressor, ventilator, or RRT)
+# Outputs:      Correlation curves for the specified endpoint.
+def plot_correlation_graphs(model):
 
-    models = [vaso, vent, rrt]
-    preprocessed_datasets = ["Backend/Preprocessed Datasets/preprocessing_vaso.csv",
-                             "Backend/Preprocessed Datasets/preprocessing_vent.csv",
-                             "Backend/Preprocessed Datasets/preprocessing_rrt.csv",]
-    importances = ["Backend/Model Metrics/importances_rfc_vaso.xlsx",
-                   "Backend/Model Metrics/importances_rfc_vent.xlsx",
-                   "Backend/Model Metrics/importances_rfc_rrt.xlsx"]
+    # Load in the preprocessed dataset
+    preprocessed_dataset = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv"
+    df = pd.read_csv(preprocessed_dataset)
 
-    x_labels = [["FiO2", "MAP", "1", "GCS", "Other Ethnicity", "3", "SaO2", "East Asian Ethnicity", "AST", "2"],
-                ["FiO2", "MAP", "2", "Other Ethnicity", "GCS", "East Asian Ethnicity", "1", "0", "4", "AST"],
-                ["Creatinine", "0", "Potassium", "3", "SaO2", "Temperature", "CKD?", "Respiratory Rate", "Troponin", "Hemoglobin"]]
+    # The 10 most correlated features as readable names for the x-axis.
+    t10_feature_importances = pd.read_excel("Backend/Model Metrics/importances_rfc_" + model["name"] + ".xlsx", skiprows=0).head(10)
+    t10_feature_names = t10_feature_importances.iloc[:, 0].astype(str).tolist()
+    x_labels = [feature_mapping[feature] for feature in t10_feature_names]
 
-    model = models[index]
-    df = pd.read_csv(preprocessed_datasets[index])
-    importances= pd.read_excel(importances[index]).head(10)
-    features = importances.iloc[:,0]
+    # Perform correlation analysis between the top 10 most important features and the target.
     target = df[model["target"]]
-    df = pd.concat([df[features], target], axis=1)
-
+    df = pd.concat([df[t10_feature_names], target], axis=1)
     correlation_matrix = df.corr()
     correlations = correlation_matrix[model["target"]].drop(model["target"])
-
-    print(correlations)
         
     # Set up the matplotlib figure
-    fig, ax = plt.subplots(figsize=(7, 6))
-    colors = ['red' if corr > 0 else 'blue' for corr in correlations.values]
+    _, ax = plt.subplots(figsize=(7, 6))
 
-    from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
     cmap = LinearSegmentedColormap.from_list('custom', ['cornflowerblue', 'white', 'lightcoral'])
 
     norm = TwoSlopeNorm(vcenter=0, vmin=np.min(correlations), vmax=np.max(correlations))
     normalized_correlations = norm(correlations)
 
     # Create a bar plot using seaborn with custom X-axis labels and a diverging colormap
-    # sns.barplot(x=x_labels[index], y=correlations.values, ax=ax, palette=colors)
     sns.barplot(x=np.arange(len(correlations)), y=correlations, ax=ax, palette=cmap(normalized_correlations))
 
     # Add labels and title
@@ -101,83 +107,38 @@ def plot_correlation_graphs():
     ax.set_title(f'Feature Correlation with {model["intervention"]} Use'.title(), fontfamily="Arial", fontsize=14, fontweight='bold')
 
     # Tilt X-axis labels at an angle
-    ax.set_xticklabels(x_labels[index], rotation=45, ha='right')
+    ax.set_xticklabels(x_labels, rotation=45, ha='right')
 
     # Adjust tick label font size
     ax.tick_params(axis='both', labelsize=10)
 
     # Show the plot
     plt.tight_layout()
-    plt.savefig('Backend/Graphs/correlation_plot_' + model["name"] + '.png', dpi=300)  # Save the plot to a high-resolution image
+    plt.savefig('Backend/Graphs/correlation_plot_' + model["name"] + '.png', dpi=300)  # Save the plot
 
-def plot_correlation_with_components():
-    index = 1
+def is_integer_string(series):
+    return series.apply(lambda x: x.isdigit()).all()
 
-    models = [vaso, vent, rrt]
-    model = models[index]
-    preprocessed_datasets = ["Backend/Preprocessed Datasets/preprocessing_vaso.csv",
-                             "Backend/Preprocessed Datasets/preprocessing_vent.csv",
-                             "Backend/Preprocessed Datasets/preprocessing_rrt.csv",]
-    
-    x_labels = [{
-            'med_antifungal': "Antifungal Use",
-            'co_other___1': "Other\nComorbidity",
-            'bl_oxy_status': "Oxygen Therapy\nStatus",
-            'demo_ethnicity___6': "Caucasian\nEthnicity",
-            'med_abx': "Antibiotics",
-            'med_steroid': "Steroids",
-            'demo_ethnicity___3': "South Asian\nEthnicity",
-            'co_dementia___1': "Dementia",
-            "org_day0_fio2": "FiO2",
-            "co_smoking": "Smoking Status",
-        },
-        {
-            'med_abx': "Antibiotics",
-            'co_dementia___1': "Comorbid\nDementia",
-            'demo_ethnicity___6': "Caucasian\nEthnicity",
-            'med_steroid': "Steroids",
-            'org_day0_fio2': "FiO2",
-            'demo_ethnicity___3': "South Asian\nEthnicity",
-            'co_smoking': "Smoking Status",
-            'bl_oxy_status': "Oxygen Therapy\nStatus",
-            'med_antifungal': "Antifungal Use",
-            'demo_age_years': "Age (years)"
-        },
-        {
-            'med_steroid': "Steroids",
-            'bl_lab_creatinine': 'Creatinine',
-            'co_ckd___1': 'Chronic\n  Kidney Disease',
-            'med_antifungal': "   Antifungal Use",
-            'demo_ethnicity___6': "Caucasian\nEthnicity",
-            'co_smoking': "Smoking Status",
-            'bl_sao2': "SaO2",
-            'org_day0_map': "MAP",
-            'bl_lab_haemo': "Hemoglobin",
-            'org_day0_fio2': "FiO2",
-            'bl_resp_rate': "Respiratory Rate",
+# Description:  This function plots a heat map for a specified target which illustrates correlation between 
+#               each principal component with features strongly correlated with it (magnitude of correlation > 0.6)
+# Inputs:       The model used to plot the graph for (vasopressor, ventilator, or RRT)
+# Outputs:      Heatmap for the specified endpoint.
+def plot_heatmap_components_with_features(model):
 
-        },
-    ]
+    # Load in the preprocessed dataset
+    preprocessed_dataset = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv"
+    df = pd.read_csv(preprocessed_dataset)
 
-    # Create a DataFrame with the lists
-    df = pd.read_csv(preprocessed_datasets[index])
+    # Specify the principal components used in training the specified model.
+    principal_components = [col for col in df.columns if col.isdigit()]
 
-    # Specify the target variable (e.g., list4)
-    target_variables = [["0", "1", "2", "3"],
-                        ["0", "1", "4"],
-                        ["0", "1", "2", "3"]]
-
-    # Specify the variables you want to correlate with the target variables
-    correlation_variables = list(set(df.columns) - set(target_variables[index]))
-
-    # Calculate the correlation matrix for all variables
+    # Calculate the correlation matrix and extract a subset based on a threshold of r > 0.6.
+    correlation_variables = list(set(df.columns) - set(principal_components))
     correlation_matrix = df.corr()
-
-    # Extract the subset of the correlation matrix
-    subset_correlation_matrix = correlation_matrix.loc[correlation_variables, target_variables[index]]
+    subset_correlation_matrix = correlation_matrix.loc[correlation_variables, principal_components]
     row_mask = (subset_correlation_matrix.abs() > 0.6).any(axis=1)
     subset_correlation_matrix = subset_correlation_matrix[row_mask]
-    subset_correlation_matrix.rename(index=x_labels[index], inplace=True)
+    subset_correlation_matrix.rename(index=feature_mapping, inplace=True)
 
     # Set up the matplotlib figure
     plt.figure(figsize=(12, 5))
@@ -186,180 +147,19 @@ def plot_correlation_with_components():
     sns.heatmap(subset_correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=.5)
     plt.xlabel('Principal Component', fontdict={'family': 'Arial', 'weight': 'bold', 'size': 16})
     plt.ylabel('Feature', fontdict={'family': 'Arial', 'weight': 'bold', 'size': 16})
+    plt.yticks(rotation=0)
 
     # Set the title and show the plot
     plt.title(f'{model["intervention"]} Use'.title(), fontdict={'family': 'Arial', 'weight': 'bold', 'size': 20})
     
     plt.tight_layout()
     plt.savefig('Backend/Graphs/PCA_HeatMap' + model["name"] + '.png', dpi=300)  # Save the plot to a high-resolution image
-    
-plot_correlation_with_components()
 
-def plot_boxplots():
-    y_labels = {
-        'org_day0_fio2': 'FiO2',
-        'org_day0_map': 'MAP',
-        'ord_day0_gcs': 'GCS',
-        '0': 'PC 0',
-        '3': 'PC 3',
-        'demo_ethnicity___2': 'East Asian Ethnicity',
-        '7': 'PC 7',
-        'bl_sao2': 'SaO2',
-        'bl_lab_ast': 'AST',
-        'demo_ethnicity___5': "Latin American Ethnicity",
-        '4': 'PC 4',
-        'demo_ethnicity___6': 'Caucasian Ethnicity',
-        'bl_lab_creatinine': 'Creatinine',
-        '1': 'PC 1',
-        '2': 'PC 2',
-        'bl_lab_potassium': 'Potassium',
-        'bl_lab_troponin': 'Troponin',
-        'med_antifungal': 'Antifungal Use',
-        'bl_lab_haemo': 'Hemoglobin',
-        'bl_temp': 'Body Temperature',
-        'bl_hr': 'Heart Rate',
-        'demo_ethnicity___8': 'Other Ethnicity',
-        'co_ckd___1': 'CKD',
-        'bl_resp_rate': "Respiratory Rate",
-    }
-
-    index = 0
-
-    models = [vaso, vent, rrt]
-    preprocessed_datasets = ["Backend/Preprocessed Datasets/preprocessing_vaso.csv",
-                             "Backend/Preprocessed Datasets/preprocessing_vent.csv",
-                             "Backend/Preprocessed Datasets/preprocessing_rrt.csv",]
-    
-    original_dataset = "Backend/Data/ARBsI_AI_data_part1-2023-04-25.csv"
-    df = pd.read_csv(original_dataset)
-
-    targets = [col for col in df.columns if col.startswith("med_vaso___")]
-    conflicting_rows = []
-
-    # Remove such conflicting patients.
-    df = df.drop(conflicting_rows)
-    df['med_vaso'] = df[targets[:-1]].any(axis=1).astype(int) # If target is vaso, build the med_vaso column
-    
-    df = df.drop(columns=targets)                                   # drop all initial target columns
-    df = df.loc[:, ~df.columns.str.startswith('dly_day0_vaso___')]  # drop all day_0 med vaso columns
-
-    # Get the rows where med_vaso___8 is 1 and look for the indices of rows where other columns are not all 0.
-    # This incidicates conflicting rows as it means the patient both received and did not receive a vasopressor.
-    for index, row in df.iterrows():
-        if row['med_vaso___8'] == 1 and not all(row[targets[:-1]] == 0):
-            conflicting_rows.append(index)
-    
-    importances = ["Backend/Model Metrics/importances_rfc_vaso.xlsx",
-                   "Backend/Model Metrics/importances_rfc_vent.xlsx",
-                   "Backend/Model Metrics/importances_rfc_rrt.xlsx"]
-
-    # Set a common style for seaborn
-    sns.set(style="whitegrid")
-    target_labels = [{0: "No Vaso", 1: "Vaso"},
-                     {0: "No Vent", 1: "Vent"},
-                     {0: "No RRT", 1: "RRT"}]
-    
-    target_colors = {1: "lightcoral", 0: "cornflowerblue"}
-
-    for index in range(0,3):
-        model = models[index]
-        df = pd.read_csv(preprocessed_datasets[index])
-        features= pd.read_excel(importances[index]).head(10).iloc[:,0]
-        target_label = target_labels[index]
-
-        # Loop through each feature and create box plots
-        for feature in features:
-            plt.figure(figsize=(6, 6))
-
-            # Create a box plot for target = 0
-            ax = sns.boxplot(data=df, x=model["target"], y=feature, palette=target_colors)
-            print(feature)
-            print()
-
-            # Set plot labels and title
-            plt.xlabel("")
-            ax.set_xticklabels([target_label[label] for label in ax.get_xticks()])
-            
-            medians = df.groupby(model["target"])[feature].median()
-            for target_value, median_value in medians.items():
-                print(f'Median for {feature} = {target_value}: {median_value}')
-            
-            plt.ylim(0, 1.2)
-            plt.title(y_labels[feature])
-
-            # Add statistical significance stars
-            grouped_data = [df[df[model["target"]] == 0][feature], df[df[model["target"]] == 1][feature]]
-            stat, p_value = mannwhitneyu(grouped_data[0], grouped_data[1])
-            print(p_value)
-
-
-            # Define the significance levels and corresponding stars
-            alpha_levels = [0.001, 0.01, 0.05]
-            significance_stars = ['***', '**', '*']
-
-            # Add stars to the plot if the p-value is significant
-            for alpha, star in zip(alpha_levels, significance_stars):
-                if p_value < alpha:
-                    plt.text(0.5, max(max(grouped_data[0]), max(grouped_data[1]))/1.2 + 0.05, star, fontsize=20, transform=plt.gca().transAxes,
-                            horizontalalignment='center', verticalalignment='center')
-                    break
-
-            alpha_level = 0.05
-
-            # Draw a bracket if the p-value is significant
-            if p_value < alpha_level:
-                # Explicitly specify the positions of the boxes
-                box_positions = [0, 1]  # Adjust the positions as needed
-
-                # Calculate the height of the bracket using the upper whisker of the first box
-                bracket_height = max(max(grouped_data[0]), max(grouped_data[1])) + 0.05
-
-                # Draw the bracket
-                plt.hlines(bracket_height, box_positions[0], box_positions[1], color='black', linestyle='-', linewidth=2)
-
-                for pos in box_positions:
-                    plt.vlines(pos, bracket_height, max(grouped_data[pos]) + 0.04, color='black', linestyle='-', linewidth=2)
-                    plt.hlines(max(grouped_data[pos]) + 0.04, pos - 0.04, pos + 0.04, color='black', linestyle='-', linewidth=2)
-
-                # Show the plot
-                plt.savefig('Backend/Graphs/Boxplots/boxplot_' + model["name"] + '_' + y_labels[feature] + '.png')
-                # plt.show()
-            
-            # break
-
-def plot_boxplots():
-    y_labels = {
-        'org_day0_fio2': 'FiO2',
-        'org_day0_map': 'MAP',
-        'ord_day0_gcs': 'GCS',
-        '0': 'PC 0',
-        '3': 'PC 3',
-        'demo_ethnicity___2': 'East Asian Ethnicity',
-        '7': 'PC 7',
-        'bl_sao2': 'SaO2',
-        'bl_lab_ast': 'AST',
-        'demo_ethnicity___5': "Latin American Ethnicity",
-        '4': 'PC 4',
-        'demo_ethnicity___6': 'Caucasian Ethnicity',
-        'bl_lab_creatinine': 'Creatinine',
-        '1': 'PC 1',
-        '2': 'PC 2',
-        'bl_lab_potassium': 'Potassium',
-        'bl_lab_troponin': 'Troponin',
-        'med_antifungal': 'Antifungal Use',
-        'bl_lab_haemo': 'Hemoglobin',
-        'bl_temp': 'Body Temperature',
-        'bl_hr': 'Heart Rate',
-        'demo_ethnicity___8': 'Other Ethnicity',
-        'co_ckd___1': 'CKD',
-        'bl_resp_rate': "Respiratory Rate",
-    }
-
-    models = [vaso, vent, rrt]
-    
-    original_dataset = "Backend/Data/ARBsI_AI_data_part1-2023-04-25.csv"
-    df = pd.read_csv(original_dataset)
-
+# Description:  This function processes the original dataset for the purposes of plotting boxplots. It goes through the example
+#               preprocessing steps without editing the values, so that the original values can be plotted.
+# Inputs:       Original dataframe
+# Outputs:      Processed dataframe
+def process_dataset_for_boxplots(df):
     targets = [col for col in df.columns if col.startswith("med_vaso___")]
     conflicting_rows = []
 
@@ -375,12 +175,31 @@ def plot_boxplots():
     
     df = df.drop(columns=targets)                                   # drop all initial target columns
     df = df.loc[:, ~df.columns.str.startswith('dly_day0_vaso___')]  # drop all day_0 med vaso columns
+    return df
 
+# Description:  This function creates side-by-side boxplots of the feature distributions for the 10 features with the highest
+#               feature importance in patients who received each intervention and patients who did not receive each intervention, 
+#               if the distributions are significantly different, as per the Mann-Whitney U test.
+# Inputs:       Nil
+# Outputs:      Box plots of the feature distributions for patients who received each intervention and patients 
+#               who did not receive each intervention
+def plot_boxplots():
+
+    models = [vaso, vent, rrt]
+    
+    # The original dataset is used here as we want to plot the distribution of original data rather than preprocessed data.
+    # We pre-process the original dataset using the same strategies as the pre-processed dataset, but omit the 
+    # step where we normalize and standardize the data.
+    original_dataset = "Backend/Data/ARBsI_AI_data_part1-2023-04-25.csv" 
+    df = pd.read_csv(original_dataset)
+    df = process_dataset_for_boxplots(df)
+
+    # Get feature importances. Show the boxplots for the 10 most important features.
     importances = ["Backend/Model Metrics/importances_rfc_vaso.xlsx",
                    "Backend/Model Metrics/importances_rfc_vent.xlsx",
                    "Backend/Model Metrics/importances_rfc_rrt.xlsx"]
 
-    # Set a common style for seaborn
+    # Plot the graphs.
     sns.set(style="whitegrid")
     target_labels = [{0: "No Vaso", 1: "Vaso"},
                      {0: "No Vent", 1: "Vent"},
@@ -388,6 +207,7 @@ def plot_boxplots():
     
     target_colors = {1: "lightcoral", 0: "cornflowerblue"}
 
+    # For each endpoint (vasopressor, ventilator, and RRT)
     for index in range(0,3):
         model = models[index]
         features= pd.read_excel(importances[index]).head(10).iloc[:,0]
@@ -412,12 +232,12 @@ def plot_boxplots():
             for target_value, median_value in medians.items():
                 print(f'Median for {feature} = {target_value}: {median_value}')
             
-            y_min, y_max = ax.get_ylim()
-            plt.title(y_labels[feature])
+            _, y_max = ax.get_ylim()
+            plt.title(feature_mapping[feature])
 
             # Add statistical significance stars
             grouped_data = [temp[temp[model["target"]] == 0][feature], temp[temp[model["target"]] == 1][feature]]
-            stat, p_value = mannwhitneyu(grouped_data[0], grouped_data[1])
+            _, p_value = mannwhitneyu(grouped_data[0], grouped_data[1])
             print("p-value: " + str(p_value))
 
             # Define the significance levels and corresponding stars
@@ -450,8 +270,5 @@ def plot_boxplots():
 
                 # Show the plot
                 plt.tight_layout()
-                plt.savefig('Backend/Graphs/Boxplots/boxplot_' + model["name"] + '_' + y_labels[feature] + '.png')
-                # plt.show()
-            
-            # break
+                plt.savefig('Backend/Graphs/Boxplots/boxplot_' + model["name"] + '_' + feature_mapping[feature] + '.png')            
 

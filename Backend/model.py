@@ -1,21 +1,31 @@
+# Author:       George Chen
+# Date:         September 15, 2024
+# Email:        gschen@student.ubc.ca
+# Description:  This file contains the code to train machine learning models to make predictions about vasopressors, ventilators,
+#               and RRT use using the derivation COVID dataset.
+
+# Imports
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
-
 from columns import *
 from model_params import *
 from preprocessing_helpers import *
 from utils import *
 import os
 
-# Fit curve to feature importances, remove features past inflection point.
-# re-train with SVM
+random_seed = 42 # randomly chosen seed for reproducibility.
 
-random_seed = 42
-
+# Description:  Loads the derivation dataset.
+# Inputs:       Nil.
+# Outputs:      1) Derivation COVID-19 dataset.
 def load_dataset():
     return pd.read_csv('Backend/Data/ARBsI_AI_data_part1-2023-04-25.csv')
 
+# Description:  This function carries out the preprocessing pipeline.
+# Inputs:       1) Unprocessed dataframe.
+#               2) Model for which you wish to process the dataframe for (vasopressor, ventilation, or RRT).
+# Outputs:      1) Pre-processed dataframe.
 def preprocess_data(df, model):
     preprocessed_data_path = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv"
 
@@ -43,6 +53,13 @@ def preprocess_data(df, model):
     
     return pd.read_csv(preprocessed_data_path)
 
+# Description:  Generates new pre-processed dataset following PCA feature engineering.
+# Inputs:       1) Features from training dataset
+#               2) Features from test dataset
+#               3) Target from training dataset
+#               4) Target from test dataset
+#               5) Model to be trained
+# Outputs:      1) Updated pre-processed dataset.
 def rewrite_preprocessed_dataset(X_train, X_test, y_train, y_test, model):
     stacked_X = pd.concat([X_train, X_test], axis=0).sort_index()
     stacked_y = pd.concat([y_train, y_test], axis=0).sort_index()
@@ -50,33 +67,41 @@ def rewrite_preprocessed_dataset(X_train, X_test, y_train, y_test, model):
 
     df.to_csv("Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv", index=False)
 
+# Description:  Trains the model.
+# Inputs:       1) The pre-processed dataframe
+#               2) Model that you wish to train (vasopressor, ventilator, or RRT)
+#               3) Classifier that you wish to use to train (RFC, SVM, etc...)
+# Outputs:      1) The trained model
 def train_model(df, model, classifier):
+
+    # Train-test split. Test size is 20%, train size is 80%.
     X = df.drop(model["target"], axis=1)
     X.columns = X.columns.astype(str)
     y = df[model["target"]]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_seed)
     model_path = f'{classifier["name"] + "_" + model["name"]}.pkl'
 
-    if os.path.exists(model_path):
+    # Only train model if there is not already a trained model.
+    if not os.path.exists(model_path):
         # PCA should be trained on the training set only, and not the test set, to prevent data leakage.
-        # As such, we do this step after train-test splitting.
+        # As such, we train + generate principal components only on the training set.
         X_train = engineer_features(X_train, model)
 
-        # Transform the test set based on the PCA trained on the training set.
+        # Transform the test set based on the PCA trained only on the training set.
         X_test = pca_transform(X_test, model)
         rewrite_preprocessed_dataset(X_train, X_test, y_train, y_test, model)
 
+        # Perform grid search for hyperparameter optimization.
         grid_search = GridSearchCV(estimator=classifier["classifier"], 
                                 param_grid=model["params"], 
                                 cv=StratifiedKFold(n_splits=10), 
                                 scoring='accuracy',
                                 verbose = 2)
-        grid_search.fit(X_train, y_train)
+        grid_search.fit(X_train, y_train) 
 
-        # Get the best model and its parameters
+        # Save the best model and its parameters as determined by grid search.
         best_model = grid_search.best_estimator_
         best_params = grid_search.best_params_
-
         filename = f'{classifier["name"] + "_" + model["name"]}.pkl'
         with open(filename, 'wb') as file:
             pickle.dump(best_model, file)
@@ -98,17 +123,20 @@ def train_model(df, model, classifier):
     probabilities = best_model.predict_proba(X_test) # get the model's confidence in each prediction. To be used in misclassification analysis.
     probability_positive = probabilities[:, 1]
 
+    # Calculate metrics.
     calc_and_write_metrics(y_pred, y_test, probability_positive, classifier["name"] + "_" + model["name"])
     plot_roc_curve(y_test, probability_positive, classifier["name"] + "_" + model["name"], model["intervention"])
 
     return
 
+# Description:  Coordinates the training pipeline.
+# Inputs:       1) Model that you wish to train (vasopressor, ventilator, or RRT)
+#               2) Classifier that you wish to use to train (RFC, SVM, etc...)
+# Outputs:      Nil.
 def coordinate_pipeline(model, classifier):
     df = load_dataset()
     df_preprocessed = preprocess_data(df, model)
     train_model(df_preprocessed, model, classifier)
 
+# Run the pipeline
 coordinate_pipeline(rrt, rfc)
-
-# for _ in range(1):
-#     coordinate_pipeline(vaso, rfc)
