@@ -27,10 +27,10 @@ def load_dataset():
 #               2) Model for which you wish to process the dataframe for (vasopressor, ventilation, or RRT).
 # Outputs:      1) Pre-processed dataframe.
 def preprocess_data(df, model):
-    preprocessed_data_path = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv"
+    preprocessed_data_path = f'Backend/Preprocessed Datasets/preprocessing_{model["name"]}.csv'
 
-    if os.path.exists(preprocessed_data_path):
-        df = (df.pipe(remove_early_deaths)                          # remove all patients who passed within 72 hours of admission
+    if not os.path.exists(preprocessed_data_path):
+        df = (df.pipe(process_early_deaths)                         # remove all patients who passed within 72 hours of admission
                 .pipe(remove_unknown_outcome)                       # remove all patients with unknown outcome or who were discharged to another facility
                 .pipe(process_med_columns)                          # remove medication data if patient was NOT on the medication on the day of admission
                 .pipe(remove_non_numeric)                           # remove non-numeric features
@@ -65,7 +65,7 @@ def rewrite_preprocessed_dataset(X_train, X_test, y_train, y_test, model):
     stacked_y = pd.concat([y_train, y_test], axis=0).sort_index()
     df = pd.concat([stacked_X, stacked_y], axis=1)
 
-    df.to_csv("Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv", index=False)
+    df.to_csv(f'Backend/Preprocessed Datasets/preprocessing_{model["name"]}.csv', index=False)
 
 # Description:  Trains the model.
 # Inputs:       1) The pre-processed dataframe
@@ -83,17 +83,9 @@ def train_model(df, model, classifier):
 
     # Only train model if there is not already a trained model.
     if not os.path.exists(model_path):
-        # PCA should be trained on the training set only, and not the test set, to prevent data leakage.
-        # As such, we train + generate principal components only on the training set.
-        X_train = engineer_features(X_train, model)
-
-        # Transform the test set based on the PCA trained only on the training set.
-        X_test = pca_transform(X_test, model)
-        rewrite_preprocessed_dataset(X_train, X_test, y_train, y_test, model)
-
         # Perform grid search for hyperparameter optimization.
         grid_search = GridSearchCV(estimator=classifier["classifier"], 
-                                param_grid=model["params"], 
+                                param_grid=classifier["param_grid"],
                                 cv=StratifiedKFold(n_splits=10), 
                                 scoring='accuracy',
                                 verbose = 2)
@@ -107,14 +99,15 @@ def train_model(df, model, classifier):
             pickle.dump(best_model, file)
 
         # Write the parameters of the best model to file
-        df_params = pd.DataFrame.from_dict(best_params, orient='index', columns=['Value'])
-        df_params.to_excel('Backend/Model Metrics/best_params_' + classifier["name"] + '_' + model["name"] + '.xlsx', index_label='Parameter')
+        print(best_params)
+        # df_params = pd.DataFrame.from_dict(best_params, orient='index', columns=['Value'])
+        # df_params.to_excel(f'Backend/Model Metrics/{classifier["name"]}/{model["name"]}/best_params_.xlsx', index_label='Parameter')
     
         # Retrieve feature importances
-        importance_scores = best_model.feature_importances_
-        feature_importances = pd.DataFrame({'Feature': X_train.columns, 'Importance': importance_scores})
-        feature_importances = feature_importances.sort_values(by='Importance', ascending=False)
-        feature_importances.to_excel("Backend/Model Metrics/importances_" + classifier["name"] + "_" + model["name"] + ".xlsx", index=False)
+        # importance_scores = best_model.feature_importances_
+        # feature_importances = pd.DataFrame({'Feature': X_train.columns, 'Importance': importance_scores})
+        # feature_importances = feature_importances.sort_values(by='Importance', ascending=False)
+        # feature_importances.to_excel(f'Backend/Model Metrics/{classifier["name"]}/{model["name"]}/importances.xlsx', index=False)
 
     with open(model_path, 'rb') as file:
         best_model = pickle.load(file) # save the best model to file
@@ -124,8 +117,8 @@ def train_model(df, model, classifier):
     probability_positive = probabilities[:, 1]
 
     # Calculate metrics.
-    calc_and_write_metrics(y_pred, y_test, probability_positive, classifier["name"] + "_" + model["name"])
-    plot_roc_curve(y_test, probability_positive, classifier["name"] + "_" + model["name"], model["intervention"])
+    calc_and_write_metrics(y_pred, y_test, probability_positive, model["name"], classifier["name"])
+    plot_roc_curve(y_test, probability_positive, model["name"], model["intervention"], classifier["name"])
 
     return
 
@@ -139,4 +132,5 @@ def coordinate_pipeline(model, classifier):
     train_model(df_preprocessed, model, classifier)
 
 # Run the pipeline
-coordinate_pipeline(rrt, rfc)
+coordinate_pipeline(rrt, mlp)
+

@@ -87,13 +87,12 @@ rrt = {
 }
 
 rfc_param_grid = {
-    'n_estimators': [500], 
-    'max_depth': [None, 30],
-    'min_samples_split': [2, 5, 10],
-    'min_samples_leaf': [1, 2, 4],
-    'min_samples_leaf': [1],
-    'max_features': ['log2'],
-    'bootstrap': [True]
+    'n_estimators': [50, 100, 200],            # Number of trees in the forest
+    'max_depth': [10, 20, 30, None],           # Maximum depth of the tree
+    'min_samples_split': [2, 5, 10],           # Minimum number of samples required to split an internal node
+    'min_samples_leaf': [1, 2, 4],             # Minimum number of samples required to be at a leaf node
+    'max_features': ['sqrt', 'log2'],          # Number of features to consider when looking for the best split
+    'bootstrap': [True, False]                 # Whether bootstrap samples are used when building trees
 }
 
 xgb_param_grid = {
@@ -120,14 +119,12 @@ svm_param_grid = {
 }
 
 mlp_param_grid = {
-    'hidden_layer_sizes': [(10,6,10), (7, 12, 7), (13, 13)],
-    'max_iter': [2500],
-    'activation': ['relu'],
-    'solver': ['adam'],
+    'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,)],
+    'activation': ['tanh', 'relu'],
+    'solver': ['sgd', 'adam'],
     'alpha': [0.0001, 0.05],
     'learning_rate': ['constant','adaptive'],
 }
-
 
 rfc = {
     "classifier": RandomForestClassifier(random_state=42),
@@ -148,7 +145,7 @@ xgboost = {
 }
 
 svm = {
-    "classifier": SVC(),
+    "classifier": SVC(probability=True),
     "name": "svm",
     "param_grid": svm_param_grid
 }

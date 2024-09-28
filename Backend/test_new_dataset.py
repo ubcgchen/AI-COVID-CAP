@@ -45,7 +45,7 @@ df = pd.read_csv('Backend/Data/' + dataset_name)
 # Any feature selection/encoding/engineering strategy uses the model trained on the original dataset.
 
 if index == 0:  # Predicting COVID or CAP? If COVID, remove non-COVID patients
-    df = (df.pipe(remove_early_deaths)                              # remove all patients who passed within 72 hours of admission
+    df = (df.pipe(process_early_deaths)                             # remove all patients who passed within 72 hours of admission
             .pipe(remove_unknown_outcome)                           # remove all patients with unknown outcome or d/c to another facility
             .pipe(process_med_columns)                              # only keep meds that were administered on the first day
             .pipe(remove_non_numeric)                               # remove non-numeric features
@@ -57,7 +57,7 @@ if index == 0:  # Predicting COVID or CAP? If COVID, remove non-COVID patients
             .pipe(lambda df: consolidate_cols(df, curr_model))      # consolidate all columns
         )  
 else:   # Else if CAP, do not remove non-COVID patients.
-    df = (df.pipe(remove_early_deaths)                              # remove all patients who passed within 72 hours of admission
+    df = (df.pipe(process_early_deaths)                             # remove all patients who passed within 72 hours of admission
             .pipe(remove_unknown_outcome)                           # remove all patients with unknown outcome or d/c to another facility
             .pipe(process_med_columns)                              # only keep meds that were administered on the first day
             .pipe(remove_non_numeric)                               # remove non-numeric features

@@ -18,21 +18,30 @@ from statistics import mode
 from imblearn.over_sampling import SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
+from statistics import mean
 
 from columns import *
 from model_params import *
+from utils import *
 
 random_seed = 42 # randomly chosen seed for reproducibility.
 
-# Drop all patients who died without ICU admission. This may indicate no time/space for ICU admission or advanced wishes (eg DNI, DNR, ...).
-# There are other variables that may confound lack of intervention.
-def remove_early_deaths(df):
+# Change the outcome of all patients who died without ICU admission as experiencing the outcome - 
+# assume these patients would have benefitted from such intervention.
+def process_early_deaths(df):
     mask = (
         (df['dis_outcome'] == 0) &  # patient passed away and...
         (df['bl_admission_icu'] == 0)  # they were not admitted to ICU
     )
 
-    df = df[~mask]
+    # Update the specified columns based on the mask.
+    # Classify patients who died without ICU admission as experiencing every outcome.
+    # RRT = 1, vent = 1, vaso = 1 (we are not interested in individual pressors at the moment, so we set an arbitrary one to 1 and set med_vaso___8, which is "no vasopressors received" to 0).
+    df.loc[mask, ['dis_rrt', 'dis_ventilation', 'med_vaso___0']] = 1
+    df.loc[mask, 'med_vaso___8'] = 0
+
+    df.to_csv('output_file.csv', index=False)
+
     return df
 
 # Drop all patients with unknown outcome or who were discharged to another facility.
@@ -46,28 +55,27 @@ def remove_unknown_outcome(df):
 def process_med_columns(df):
 
     # Convert date columns to datetime objects
-    df['bl_admission_date'] = pd.to_datetime(df['bl_admission_date'])           # Date of admission
-    df['med_abx_start'] = pd.to_datetime(df['med_abx_start'])                   # Date that drugs were started  
-    df['med_antifungal_start'] = pd.to_datetime(df['med_antifungal_start'])
-    df['med_steroid_start'] = pd.to_datetime(df['med_steroid_start'])
+    df.loc[:, 'bl_admission_date'] = pd.to_datetime(df['bl_admission_date'])           # Date of admission
+    df.loc[:, 'med_abx_start'] = pd.to_datetime(df['med_abx_start'])                   # Date that drugs were started  
+    df.loc[:, 'med_antifungal_start'] = pd.to_datetime(df['med_antifungal_start'])
+    df.loc[:, 'med_steroid_start'] = pd.to_datetime(df['med_steroid_start'])
 
-    df['med_abx_end'] = pd.to_datetime(df['med_abx_end'])                       # Date that drugs were ended
-    df['med_antifungal_end'] = pd.to_datetime(df['med_antifungal_end'])
-    df['med_steroid_end'] = pd.to_datetime(df['med_steroid_end'])
+    df.loc[:, 'med_abx_end'] = pd.to_datetime(df['med_abx_end'])                       # Date that drugs were ended
+    df.loc[:, 'med_antifungal_end'] = pd.to_datetime(df['med_antifungal_end'])
+    df.loc[:, 'med_steroid_end'] = pd.to_datetime(df['med_steroid_end'])
 
     # Only keep the data if the admission date falls between drug start and end date (inclusive).
-
     # Update antibiotics column
-    df['med_abx'] = ((df['med_abx_start'] <= df['bl_admission_date']) & 
-                    (df['med_abx_end'] >= df['bl_admission_date'])).astype(int)
+    df.loc[:, 'med_abx'] = ((df['med_abx_start'] <= df['bl_admission_date']) & 
+                            (df['med_abx_end'] >= df['bl_admission_date'])).astype(int)
 
     # Update antifungal column
-    df['med_antifungal'] = ((df['med_antifungal_start'] <= df['bl_admission_date']) & 
-                            (df['med_antifungal_end'] >= df['bl_admission_date'])).astype(int)
+    df.loc[:, 'med_antifungal'] = ((df['med_antifungal_start'] <= df['bl_admission_date']) & 
+                                   (df['med_antifungal_end'] >= df['bl_admission_date'])).astype(int)
 
     # Update steroid column
-    df['med_steroid'] = ((df['med_steroid_start'] <= df['bl_admission_date']) & 
-                        (df['med_steroid_end'] >= df['bl_admission_date'])).astype(int)
+    df.loc[:, 'med_steroid'] = ((df['med_steroid_start'] <= df['bl_admission_date']) & 
+                                (df['med_steroid_end'] >= df['bl_admission_date'])).astype(int)
 
     return df
 
@@ -242,34 +250,39 @@ def impute_rest(df, model):
 
     return df
 
-# Use SMOTE to rebalance dataset
-def balance_data(df, model):
-    X = df.drop(model['target'], axis=1)  # Features
-    y = df[model['target']]  # Target variable
-
-    smote = SMOTE(random_state=random_seed)
-    X_resampled, y_resampled = smote.fit_resample(X, y)
-    df = pd.concat([X_resampled, y_resampled], axis=1)
-
-    return df
-
+# Balance data using the ADASYN and SMOTE methods.
 def balance_data_custom(df, model):
-    proportion_ADASYN = model["sampling_strategy_adasyn"]
-    proportion_SMOTE = model["sampling_strategy_smote"]
-    
     # Separate features and target variable
     X = df.drop(model['target'], axis=1)
     y = df[model['target']]
+    proportions = y.value_counts(normalize=True)
+
+    proportion_0 = proportions.get(0, 0) * 100  # Proportion of 0 in percentage
+    proportion_1 = proportions.get(1, 0) * 100  # Proportion of 1 in percentage
+
+    minority = min(proportion_0, proportion_1)
+    majority = max(proportion_0, proportion_1)
+
+    # At most, the number of examples imputed each step does not exceed the number of known samples.
+    # If less samples are needed, split the imputation evenly between ADASYN and SMOTE.
+    proportion_ADASYN = min(minority/majority * 2, mean((1, minority/majority))) #min(minority/majority * 2, round_up_to_multiple_of_10(mean((1, minority/majority))))
+    proportion_SMOTE = min(minority/majority * 3, 1)
+    additor = 0
 
     # Create a pipeline with SMOTE for oversampling and RandomUnderSampler for undersampling steps
-    pipeline = Pipeline([
-        ('adasyn', ADASYN(sampling_strategy=proportion_ADASYN, random_state=random_seed)),
-        ('over', SMOTE(sampling_strategy=proportion_SMOTE, random_state=random_seed)),
-        ('under', RandomUnderSampler(sampling_strategy='auto', random_state=random_seed))
-    ])
+    while 1:
+        try:
+            pipeline = Pipeline([
+                ('adasyn', ADASYN(sampling_strategy=proportion_ADASYN + additor, random_state=random_seed)),
+                ('over', SMOTE(sampling_strategy=proportion_SMOTE, random_state=random_seed)),
+                ('under', RandomUnderSampler(sampling_strategy='auto', random_state=random_seed))
+            ])
 
-    # Fit and transform the data
-    X, y = pipeline.fit_resample(X, y)
+            # Fit and transform the data
+            X, y = pipeline.fit_resample(X, y)
+            break
+        except ValueError as e:
+            additor += 0.01
 
     # Create a new DataFrame with the resampled data
     df = pd.concat([X, y], axis=1)
@@ -293,51 +306,6 @@ def boruta_select(df, model):
 
     X = X.loc[:, boruta.support_.tolist()]
     return pd.concat([X, y], axis=1)
-
-# Use PCA to reduce dimensionality, add these features on as "composite" features.
-def engineer_features(X, model):
-    # Step 1: Apply PCA to reduce dimensionality
-    pca = PCA(n_components=model["n_components"], random_state=random_seed)  # Specify the desired explained variance
-    principal_components = pca.fit_transform(X)
-
-    filename = f'{"PCA_" + model["name"]}.pkl'
-    with open(filename, 'wb') as file:
-        pickle.dump(pca, file)
-
-    # Step 2: Normalize the principal components to [0, 1]
-    scaler = MinMaxScaler()
-    normalized_principal_components = scaler.fit_transform(principal_components)
-
-    filename = f'{"PCA_scaler_" + model["name"]}.pkl'
-    with open(filename, 'wb') as file:
-        pickle.dump(scaler, file)
-
-    normalized_principal_components = pd.DataFrame(normalized_principal_components)
-    normalized_principal_components.index = X.index
-
-    # Step 3: Combine the selected principal components with the original dataset
-    augmented_data = pd.concat([X, normalized_principal_components], axis=1)
-
-    augmented_data.columns = augmented_data.columns.astype(str)
-
-    return augmented_data
-
-# Transform some dataset with a pre-trained PCA + PCA scaler.
-def pca_transform(X, model):
-    with open(model["PCA"], 'rb') as file:
-        pca = pickle.load(file)
-    with open(model["PCA_scaler"], 'rb') as file:
-        pca_scaler = pickle.load(file)
-
-    principal_components = pca.transform(X)
-    normalized_principal_components = pca_scaler.transform(principal_components)
-    normalized_principal_components = pd.DataFrame(normalized_principal_components)
-    normalized_principal_components.index = X.index
-    X = pd.concat([X, normalized_principal_components], axis=1)
-
-    X.columns = X.columns.astype(str)
-
-    return X
 
 # This function does a few things:
 # 1) Remove all columns in the test dataset that are not in the preprocessed derivation dataset.
