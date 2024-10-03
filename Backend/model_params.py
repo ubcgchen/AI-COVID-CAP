@@ -12,9 +12,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 
 vaso_params = {
-    "bootstrap": [True],
-    "max_depth": [None],
-    "max_features": ['log2'],
+    "bootstrap": [False],
+    "max_depth": [30],
+    "max_features": ['sqrt'],
     "min_samples_leaf": [1],
     "min_samples_split": [2],
     "n_estimators": [200]
@@ -37,11 +37,11 @@ vaso = {
 }
 
 vent_params = {
-    "bootstrap": [True],
-    "max_depth": [None],
-    "max_features": ['log2'],
-    "min_samples_leaf": [1],
-    "min_samples_split": [2],
+    "bootstrap": [False],
+    "max_depth": [10],
+    "max_features": ['sqrt'],
+    "min_samples_leaf": [2],
+    "min_samples_split": [5],
     "n_estimators": [200]
 }
 
@@ -62,12 +62,12 @@ vent = {
 }
 
 rrt_params = {
-    "bootstrap": [True],
-    "max_depth": [None],
-    "max_features": ['log2'],
+    "bootstrap": [False],
+    "max_depth": [10],
+    "max_features": ['sqrt'],
     "min_samples_leaf": [1],
-    "min_samples_split": [5],
-    "n_estimators": [500]
+    "min_samples_split": [2],
+    "n_estimators": [200]
 }
 
 rrt = {

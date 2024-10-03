@@ -221,12 +221,16 @@ def impute_labs(df):
     }
 
     for key, lab_value in labs.items():
-        column_name = f"bl_lab_{key}"
-        average = df[df[column_name] < lab_value][column_name].mean()
+        try: 
+            column_name = f"bl_lab_{key}"
+            average = df[df[column_name] < lab_value][column_name].mean()
 
-        # Replace NaN with the calculated average
-        df[column_name].fillna(average, inplace=True)
-        df[column_name].fillna(lab_value, inplace=True)
+            # Replace NaN with the calculated average
+            df[column_name].fillna(average, inplace=True)
+            df[column_name].fillna(lab_value, inplace=True)
+        except KeyError as e:
+            ## Do nothing
+            continue
 
     return df
 
@@ -310,7 +314,7 @@ def boruta_select(df, model):
 # This function does a few things:
 # 1) Remove all columns in the test dataset that are not in the preprocessed derivation dataset.
 # 2) Fills in lab values for troponin and ddimer.
-def consolidate_cols(df, model):
+def consolidate_cols(df, model, dataset_type = ""):
     # load the columns within the preprocessed dataset of interest.
     with open(model["scaler"], 'rb') as file:
         scaler = pickle.load(file)
@@ -325,7 +329,7 @@ def consolidate_cols(df, model):
         "bl_lab_ddimer": 0
     }
 
-    path_to_preprocessed_data = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv"
+    path_to_preprocessed_data = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + dataset_type + ".csv"
     file_path = path_to_preprocessed_data
     df_original = pd.read_csv(file_path)
 

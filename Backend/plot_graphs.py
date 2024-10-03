@@ -22,11 +22,13 @@ def plot_roc():
     fpr_dict = {}
     tpr_dict = {}
 
+    result_sets = ['rfc','validation data/Part2', 'validation data/CAP', 'validation data/CAP2']
+
     # Data to plot for ROC curves
-    paths = [f'Backend/Graphs/fpr_tpr_rfc_',
-            f'Backend/Graphs/fpr_tpr_rfc_Part2_',
-            f'Backend/Graphs/fpr_tpr_rfc_CAP_',
-            f'Backend/Graphs/fpr_tpr_rfc_CAP2_']
+    # paths = [f'Backend/Graphs/fpr_tpr_rfc_',
+    #         f'Backend/Graphs/fpr_tpr_rfc_Part2_',
+    #         f'Backend/Graphs/fpr_tpr_rfc_CAP_',
+    #         f'Backend/Graphs/fpr_tpr_rfc_CAP2_']
     
     # Titles to be used for each curve
     titles= ['Derivation COVID-19 Pneumonia Dataset',
@@ -46,10 +48,12 @@ def plot_roc():
             ['BurlyWood', 'OliveDrab', 'Chocolate'],
             ['black', 'dimgray', 'lightgray']] 
     
+    index = 0
+
     # Plot ROC curves for each dataset.
-    for index in range(0, 4):
+    for result_set in result_sets:
         for model in models:
-            path = f'{paths[index]}{model["name"]}.csv' 
+            path = f'Backend/Model Metrics/{result_set}/{model["name"]}/fpr_tpr.csv' 
             df = pd.read_csv(path)
             fpr_dict[model["name"]] = df["fpr"].tolist()
             tpr_dict[model["name"]] = df["tpr"].tolist()
@@ -67,7 +71,8 @@ def plot_roc():
         plt.legend(loc='lower right', prop={'family': 'Arial', 'weight': 'normal', 'size': 14})
         plt.title(titles[index], fontdict={'family': 'Arial', 'weight': 'bold', 'size': 20})
 
-        plt.savefig('Backend/Graphs/' + file_names[index] + '.png')
+        plt.savefig('Backend/Graphs/ROC Curves/' + file_names[index] + '.png')
+        index += 1
 
 # Description:  This function plots the Pearson's correlation coefficient of the 10 features most correlated with the 
 #               specified target, by magnitude.
@@ -80,7 +85,7 @@ def plot_correlation_graphs(model):
     df = pd.read_csv(preprocessed_dataset)
 
     # The 10 most correlated features as readable names for the x-axis.
-    t10_feature_importances = pd.read_excel("Backend/Model Metrics/importances_rfc_" + model["name"] + ".xlsx", skiprows=0).head(10)
+    t10_feature_importances = pd.read_excel("Backend/Model Metrics/rfc/" + model["name"] + "/importances.xlsx", skiprows=0).head(10)
     t10_feature_names = t10_feature_importances.iloc[:, 0].astype(str).tolist()
     x_labels = [feature_mapping[feature] for feature in t10_feature_names]
 
@@ -89,6 +94,7 @@ def plot_correlation_graphs(model):
     df = pd.concat([df[t10_feature_names], target], axis=1)
     correlation_matrix = df.corr()
     correlations = correlation_matrix[model["target"]].drop(model["target"])
+    print(correlations)
         
     # Set up the matplotlib figure
     _, ax = plt.subplots(figsize=(7, 6))
@@ -114,46 +120,11 @@ def plot_correlation_graphs(model):
 
     # Show the plot
     plt.tight_layout()
-    plt.savefig('Backend/Graphs/correlation_plot_' + model["name"] + '.png', dpi=300)  # Save the plot
+    plt.savefig('Backend/Graphs/Correlation Plots/correlation_plot_' + model["name"] + '.png', dpi=300)  # Save the plot
+
 
 def is_integer_string(series):
     return series.apply(lambda x: x.isdigit()).all()
-
-# Description:  This function plots a heat map for a specified target which illustrates correlation between 
-#               each principal component with features strongly correlated with it (magnitude of correlation > 0.6)
-# Inputs:       The model used to plot the graph for (vasopressor, ventilator, or RRT)
-# Outputs:      Heatmap for the specified endpoint.
-def plot_heatmap_components_with_features(model):
-
-    # Load in the preprocessed dataset
-    preprocessed_dataset = "Backend/Preprocessed Datasets/preprocessing_" + model["name"] + ".csv"
-    df = pd.read_csv(preprocessed_dataset)
-
-    # Specify the principal components used in training the specified model.
-    principal_components = [col for col in df.columns if col.isdigit()]
-
-    # Calculate the correlation matrix and extract a subset based on a threshold of r > 0.6.
-    correlation_variables = list(set(df.columns) - set(principal_components))
-    correlation_matrix = df.corr()
-    subset_correlation_matrix = correlation_matrix.loc[correlation_variables, principal_components]
-    row_mask = (subset_correlation_matrix.abs() > 0.6).any(axis=1)
-    subset_correlation_matrix = subset_correlation_matrix[row_mask]
-    subset_correlation_matrix.rename(index=feature_mapping, inplace=True)
-
-    # Set up the matplotlib figure
-    plt.figure(figsize=(12, 5))
-
-    # Plot the heatmap using seaborn
-    sns.heatmap(subset_correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=.5)
-    plt.xlabel('Principal Component', fontdict={'family': 'Arial', 'weight': 'bold', 'size': 16})
-    plt.ylabel('Feature', fontdict={'family': 'Arial', 'weight': 'bold', 'size': 16})
-    plt.yticks(rotation=0)
-
-    # Set the title and show the plot
-    plt.title(f'{model["intervention"]} Use'.title(), fontdict={'family': 'Arial', 'weight': 'bold', 'size': 20})
-    
-    plt.tight_layout()
-    plt.savefig('Backend/Graphs/PCA_HeatMap' + model["name"] + '.png', dpi=300)  # Save the plot to a high-resolution image
 
 # Description:  This function processes the original dataset for the purposes of plotting boxplots. It goes through the example
 #               preprocessing steps without editing the values, so that the original values can be plotted.
@@ -195,9 +166,9 @@ def plot_boxplots():
     df = process_dataset_for_boxplots(df)
 
     # Get feature importances. Show the boxplots for the 10 most important features.
-    importances = ["Backend/Model Metrics/importances_rfc_vaso.xlsx",
-                   "Backend/Model Metrics/importances_rfc_vent.xlsx",
-                   "Backend/Model Metrics/importances_rfc_rrt.xlsx"]
+    importances = ["Backend/Model Metrics/rfc/vaso/importances.xlsx",
+                   "Backend/Model Metrics/rfc/vent/importances.xlsx",
+                   "Backend/Model Metrics/rfc/rrt/importances.xlsx"]
 
     # Plot the graphs.
     sns.set(style="whitegrid")
@@ -272,3 +243,4 @@ def plot_boxplots():
                 plt.tight_layout()
                 plt.savefig('Backend/Graphs/Boxplots/boxplot_' + model["name"] + '_' + feature_mapping[feature] + '.png')            
 
+plot_boxplots()

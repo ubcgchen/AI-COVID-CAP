@@ -90,7 +90,7 @@ def plot_misclassified_features(curr_model, misclassified_data, correct_data):
 # Description:  Overlays the distribution of confidences in the model's incorrect classifications versus its correct classifications.
 # Inputs:       Model whose misclassifications you wish to analyze
 # Outputs:      Overlayed histograms of distribution of confidences correctly and incorrectly classified examples.
-def plot_misclassified_distributions(curr_model):
+def plot_misclassified_distributions(curr_model, a, b):
     # Load model confidences in its falsely negative classifications, falsely positive classifications, and correctly classified examples.
     false_negatives = pd.read_csv('Backend/Misclassification Analysis/false_negative_probabilities_' + curr_model["name"] + '.csv', skiprows=1, index_col=0).squeeze()
     false_positives = pd.read_csv('Backend/Misclassification Analysis/false_positive_probabilities_' + curr_model["name"] + '.csv', skiprows=1, index_col=0).squeeze()
@@ -140,4 +140,4 @@ def analyze_misclassification(curr_model, analysis):
 
     analysis(curr_model, misclassified_data, correct_data)
 
-analyze_misclassification(vaso, plot_misclassified_features)
+analyze_misclassification(vaso, plot_misclassified_distributions)

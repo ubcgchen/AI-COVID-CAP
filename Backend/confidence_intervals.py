@@ -1,8 +1,8 @@
 # Author:       George Chen
 # Date:         September 15, 2024
 # Email:        gschen@student.ubc.ca
-# Description:  This file contains the code to train machine learning models to make predictions about vasopressors, ventilators,
-#               and RRT use using the derivation COVID dataset.
+# Description:  This file contains a reformatted version of the code to train machine learning models to make predictions about vasopressors, ventilators,
+#               and RRT use using the derivation COVID dataset. It trains 100 different models.
 
 # Imports
 import pandas as pd
@@ -14,7 +14,6 @@ from preprocessing_helpers import *
 from utils import *
 import os
 
-random_seed = 42 # randomly chosen seed for reproducibility.
 
 # Description:  Loads the derivation dataset.
 # Inputs:       Nil.
@@ -53,6 +52,20 @@ def preprocess_data(df, model):
     
     return pd.read_csv(preprocessed_data_path)
 
+# Description:  Generates new pre-processed dataset following PCA feature engineering.
+# Inputs:       1) Features from training dataset
+#               2) Features from test dataset
+#               3) Target from training dataset
+#               4) Target from test dataset
+#               5) Model to be trained
+# Outputs:      1) Updated pre-processed dataset.
+def rewrite_preprocessed_dataset(X_train, X_test, y_train, y_test, model):
+    stacked_X = pd.concat([X_train, X_test], axis=0).sort_index()
+    stacked_y = pd.concat([y_train, y_test], axis=0).sort_index()
+    df = pd.concat([stacked_X, stacked_y], axis=1)
+
+    df.to_csv(f'Backend/Preprocessed Datasets/preprocessing_{model["name"]}.csv', index=False)
+
 # Description:  Trains the model.
 # Inputs:       1) The pre-processed dataframe
 #               2) Model that you wish to train (vasopressor, ventilator, or RRT)
@@ -64,47 +77,44 @@ def train_model(df, model, classifier):
     X = df.drop(model["target"], axis=1)
     X.columns = X.columns.astype(str)
     y = df[model["target"]]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_seed)
-    model_path = f'{classifier["name"] + "_" + model["name"]}.pkl'
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    # Only train model if there is not already a trained model.
-    if not os.path.exists(model_path):
-        # Perform grid search for hyperparameter optimization.
-        grid_search = GridSearchCV(estimator=classifier["classifier"], 
-                                param_grid=classifier["param_grid"],
-                                cv=StratifiedKFold(n_splits=10), 
-                                scoring='accuracy',
-                                verbose = 2)
-        grid_search.fit(X_train, y_train) 
+    classifiers = {
+        'vaso': RandomForestClassifier(
+                    n_estimators=200,          # Number of trees
+                    max_depth=30,              # Maximum depth of the trees
+                    min_samples_split=2,       # Minimum number of samples required to split a node
+                    min_samples_leaf=1,        # Minimum number of samples required in a leaf node
+                    bootstrap=False,            # Whether bootstrap samples are used
+                    max_features='sqrt',
+                ),
+        'vent': RandomForestClassifier(
+                    n_estimators=200,          # Number of trees
+                    max_depth=10,              # Maximum depth of the trees
+                    min_samples_split=5,       # Minimum number of samples required to split a node
+                    min_samples_leaf=2,        # Minimum number of samples required in a leaf node
+                    bootstrap=False,            # Whether bootstrap samples are used
+                    max_features='sqrt',
+                ),
+        'rrt': RandomForestClassifier(
+                    n_estimators=200,          # Number of trees
+                    max_depth=10,              # Maximum depth of the trees
+                    min_samples_split=2,       # Minimum number of samples required to split a node
+                    min_samples_leaf=1,        # Minimum number of samples required in a leaf node
+                    bootstrap=False,            # Whether bootstrap samples are used
+                    max_features='sqrt',
+                )
+    }
 
-        # Save the best model and its parameters as determined by grid search.
-        best_model = grid_search.best_estimator_
-        best_params = grid_search.best_params_
-        filename = f'{classifier["name"] + "_" + model["name"]}.pkl'
-        with open(filename, 'wb') as file:
-            pickle.dump(best_model, file)
+    rfc = classifiers[model["name"]]
+    rfc.fit(X_train, y_train)
 
-        # Write the parameters of the best model to file
-        print(best_params)
-        df_params = pd.DataFrame.from_dict(best_params, orient='index', columns=['Value'])
-        df_params.to_excel(f'Backend/Model Metrics/{classifier["name"]}/{model["name"]}/best_params_.xlsx', index_label='Parameter')
-    
-        # Retrieve feature importances
-        importance_scores = best_model.feature_importances_
-        feature_importances = pd.DataFrame({'Feature': X_train.columns, 'Importance': importance_scores})
-        feature_importances = feature_importances.sort_values(by='Importance', ascending=False)
-        feature_importances.to_excel(f'Backend/Model Metrics/{classifier["name"]}/{model["name"]}/importances.xlsx', index=False)
-
-    with open(model_path, 'rb') as file:
-        best_model = pickle.load(file) # save the best model to file
-
-    y_pred = best_model.predict(X_test) # make predictions
-    probabilities = best_model.predict_proba(X_test) # get the model's confidence in each prediction. To be used in misclassification analysis.
+    y_pred = rfc.predict(X_test) # make predictions
+    probabilities = rfc.predict_proba(X_test) # get the model's confidence in each prediction. To be used in misclassification analysis.
     probability_positive = probabilities[:, 1]
 
     # Calculate metrics.
-    calc_and_write_metrics(y_pred, y_test, probability_positive, model["name"], classifier["name"])
-    plot_roc_curve(y_test, probability_positive, model["name"], model["intervention"], classifier["name"])
+    calc_and_write_metrics_list(y_pred, y_test, probability_positive, model["name"], classifier["name"])
 
     return
 
@@ -117,6 +127,8 @@ def coordinate_pipeline(model, classifier):
     df_preprocessed = preprocess_data(df, model)
     train_model(df_preprocessed, model, classifier)
 
-# Run the pipeline
-coordinate_pipeline(vent, rfc)
+# Run the pipeline 100 times
+
+for i in range(100):
+    coordinate_pipeline(vent, rfc)
 
