@@ -4,6 +4,7 @@ Backend/Misclassification Analysis
 Backend/Model Metrics
 Backend/Preprocessed Datasets
 Backend/__pycache__
+Backend/add_Day0_Indicator.py
 UI
 **/.DS_Store
 Metrics Summary.xlsx

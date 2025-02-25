@@ -29,26 +29,30 @@ def load_dataset():
 def preprocess_data(df, model):
     preprocessed_data_path = f'Backend/Preprocessed Datasets/preprocessing_{model["name"]}.csv'
 
-    if not os.path.exists(preprocessed_data_path):
-        df = (df.pipe(process_early_deaths)                         # remove all patients who passed within 72 hours of admission
-                .pipe(remove_unknown_outcome)                       # remove all patients with unknown outcome or who were discharged to another facility
-                .pipe(process_med_columns)                          # remove medication data if patient was NOT on the medication on the day of admission
-                .pipe(remove_non_numeric)                           # remove non-numeric features
-                .pipe(remove_non_medical)                           # remove non-medical features
-                .pipe(lambda df: remove_non_day_0(df, model))       # remove features not obtained on the day of admission except the target
-                .pipe(remove_non_covid)                             # remove patients who do not have/were not admitted for COVID
-                .pipe(combine_features)                             # condense features - reduce granularity
-                .pipe(correct_ordinality)                           # correct ordinality of features, as necessary
-                .pipe(remove_redundant)                             # remove redundant features (blank columns, features with 0 variance)
-                .pipe(lambda df: process_vaso(df, model))           # process vasopressor columns
-                .pipe(lambda df: remove_empty_target(df, model))    # remove patients who do not have data recorded for the target variable
-                .pipe(impute_labs)                                  # impute lab values first (only troponin + ddimer, as these tend to be highly skewed)
-                .pipe(lambda df: normalize_data(df, model))         # normalize data
-                .pipe(lambda df: impute_rest(df, model))            # impute remaining features using knn imputer
-                .pipe(lambda df: balance_data_custom(df, model))    # balance data with SMOTE
-                .pipe(lambda df: boruta_select(df, model))          # further automatic feature selection with the boruta algorithm
-            )  
-        
+    if os.path.exists(preprocessed_data_path):
+        # Run the pipeline with reset index after row removal steps
+        df = (df.pipe(process_early_deaths).reset_index(drop=True)
+                .pipe(remove_unknown_outcome).reset_index(drop=True)
+                .pipe(process_med_columns)
+                .pipe(remove_non_numeric)
+                .pipe(lambda df: remove_non_medical(df, model))
+                .pipe(lambda df: remove_non_day_0(df, model)).reset_index(drop=True)
+                .pipe(remove_non_covid).reset_index(drop=True)
+                .pipe(combine_features)
+                .pipe(correct_ordinality)
+                .pipe(remove_redundant)
+                .pipe(lambda df: process_vaso(df, model))
+                .pipe(lambda df: remove_empty_target(df, model)).reset_index(drop=True)
+                .pipe(impute_labs)
+                .pipe(lambda df: normalize_data(df, model))
+                .pipe(lambda df: impute_rest(df, model))
+                .pipe(lambda df: balance_data_custom(df, model))
+                .pipe(lambda df: boruta_select(df, model))
+        )
+
+        # Optional: Set the index back to original indices for the final output
+        print(df)
+
         df.to_csv(preprocessed_data_path, index=False)
     
     return pd.read_csv(preprocessed_data_path)
@@ -68,10 +72,10 @@ def train_model(df, model, classifier):
     model_path = f'{classifier["name"] + "_" + model["name"]}.pkl'
 
     # Only train model if there is not already a trained model.
-    if not os.path.exists(model_path):
+    if os.path.exists(model_path):
         # Perform grid search for hyperparameter optimization.
         grid_search = GridSearchCV(estimator=classifier["classifier"], 
-                                param_grid=classifier["param_grid"],
+                                param_grid=model["params"],
                                 cv=StratifiedKFold(n_splits=10), 
                                 scoring='accuracy',
                                 verbose = 2)
@@ -85,7 +89,6 @@ def train_model(df, model, classifier):
             pickle.dump(best_model, file)
 
         # Write the parameters of the best model to file
-        print(best_params)
         df_params = pd.DataFrame.from_dict(best_params, orient='index', columns=['Value'])
         df_params.to_excel(f'Backend/Model Metrics/{classifier["name"]}/{model["name"]}/best_params_.xlsx', index_label='Parameter')
     
@@ -99,6 +102,7 @@ def train_model(df, model, classifier):
         best_model = pickle.load(file) # save the best model to file
 
     y_pred = best_model.predict(X_test) # make predictions
+
     probabilities = best_model.predict_proba(X_test) # get the model's confidence in each prediction. To be used in misclassification analysis.
     probability_positive = probabilities[:, 1]
 

@@ -12,7 +12,6 @@ from boruta import BorutaPy
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 import pandas as pd
-from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 from statistics import mode
 from imblearn.over_sampling import SMOTE, ADASYN
@@ -85,7 +84,7 @@ def remove_non_numeric(df):
     return df[numeric_columns.columns]
 
 # Drop other non-medical features
-def remove_non_medical(df):
+def remove_non_medical(df, model):
     df = df.drop(drop_non_medical, axis = 1)
     return df
 
@@ -246,6 +245,7 @@ def normalize_data(df, model):
 
 # Impute the remaining features with KNN imputer
 def impute_rest(df, model):
+    print(df)
     imputer = KNNImputer(n_neighbors=model["n_neighbors"])
     df = pd.DataFrame(imputer.fit_transform(df),columns = df.columns)
 
@@ -319,6 +319,7 @@ def consolidate_cols(df, model, dataset_type = ""):
     with open(model["scaler"], 'rb') as file:
         scaler = pickle.load(file)
     common_columns = scaler.feature_names_in_
+    common_columns = np.append(common_columns, model["day0_indicator"])
 
     # Remove all the columns in the test dataset that are not in the preprocessed dataset.
     df = df[common_columns]

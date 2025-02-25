@@ -69,6 +69,9 @@ def test_new_dataset(name, dataset_index, dataset_type = ""):
 
     ########################################################################
 
+    day_0_indicator = df[curr_model["day0_indicator"]]
+    df = df.drop(curr_model["day0_indicator"], axis=1)
+
     # Load models trained during preprocessing of derivation dataset
     with open(curr_model["scaler"], 'rb') as file:
         scaler = pickle.load(file)
@@ -97,47 +100,51 @@ def test_new_dataset(name, dataset_index, dataset_type = ""):
 
     y_pred = model.predict(X)
     y_pred = pd.Series(y_pred, index=y.index)
+
     probabilities = model.predict_proba(X)
     probability_positive = probabilities[:, 1]
-    magnitudes = np.maximum(probabilities[:, 0], probabilities[:, 1])
-    magnitudes = pd.Series(magnitudes, index=y.index)
-    probabilities = pd.DataFrame(probabilities, index=y.index)
+    # magnitudes = np.maximum(probabilities[:, 0], probabilities[:, 1])
+    # magnitudes = pd.Series(magnitudes, index=y.index)
+    # probabilities = pd.DataFrame(probabilities, index=y.index)
 
-    incorrect_indices = y.index[y != y_pred].tolist()
-    incorrect_examples = df.loc[incorrect_indices]
-    incorrect_probabilities = probabilities.loc[incorrect_indices]
+    # incorrect_indices = y.index[y != y_pred].tolist()
+    # incorrect_examples = df.loc[incorrect_indices]
+    # incorrect_probabilities = probabilities.loc[incorrect_indices]
 
-    false_negative_probabilities = pd.Series()
-    false_positive_probabilities = pd.Series()
+    # false_negative_probabilities = pd.Series()
+    # false_positive_probabilities = pd.Series()
 
-    # Identify false negatives and false positives
-    for index, row in incorrect_probabilities.iterrows():
-        if row[0] > row[1]:
-            false_negative_probabilities.loc[index] = row[0]
-        elif row[1] > row[0]:
-            false_positive_probabilities.loc[index] = row[1]
+    # # Identify false negatives and false positives
+    # for index, row in incorrect_probabilities.iterrows():
+    #     if row[0] > row[1]:
+    #         false_negative_probabilities.loc[index] = row[0]
+    #     elif row[1] > row[0]:
+    #         false_positive_probabilities.loc[index] = row[1]
 
-    correct_indices = X.index.difference(incorrect_indices)
-    correct_examples = df.loc[correct_indices]
-    correct_probabilities = magnitudes.loc[correct_indices]
+    # correct_indices = X.index.difference(incorrect_indices)
+    # correct_examples = df.loc[correct_indices]
+    # correct_probabilities = magnitudes.loc[correct_indices]
 
-    # false_negative_probabilities.to_csv('Backend/Misclassification Analysis/false_negative_probabilities_' + name + '.csv', index=True)
-    # false_positive_probabilities.to_csv('Backend/Misclassification Analysis/false_positive_probabilities_' + name + '.csv', index=True)
-    # correct_probabilities.to_csv('Backend/Misclassification Analysis/correct_probabilities_' + name + '.csv', index=True)
-    # incorrect_examples.to_csv('Backend/Misclassification Analysis/incorrectly_classified_examples_' + name + '.csv', index=True)
-    # correct_examples.to_csv('Backend/Misclassification Analysis/correctly_classified_examples_' + name + '.csv', index=True)
+    # # false_negative_probabilities.to_csv('Backend/Misclassification Analysis/false_negative_probabilities_' + name + '.csv', index=True)
+    # # false_positive_probabilities.to_csv('Backend/Misclassification Analysis/false_positive_probabilities_' + name + '.csv', index=True)
+    # # correct_probabilities.to_csv('Backend/Misclassification Analysis/correct_probabilities_' + name + '.csv', index=True)
+    # # incorrect_examples.to_csv('Backend/Misclassification Analysis/incorrectly_classified_examples_' + name + '.csv', index=True)
+    # # correct_examples.to_csv('Backend/Misclassification Analysis/correctly_classified_examples_' + name + '.csv', index=True)
 
     calc_and_write_metrics(y_pred, y, probability_positive, name, f'validation data/{dataset_names[dataset_index]}') # calculate and write metrics to file
-    plot_roc_curve(y, probability_positive, name, curr_model["intervention"], f'validation data/{dataset_names[dataset_index]}')
+    # plot_roc_curve(y, probability_positive, name, curr_model["intervention"], f'validation data/{dataset_names[dataset_index]}')
+    calc_stratified_metrics(y_pred, y, day_0_indicator)
 
 
 ################################
 
-names = ["rrt", "vent", "vaso"]
-indices = [3]
+# ["rrt", "vent", "vaso"]
+
+names = ["vaso"]
+indices = [2]
 
 for index in indices:
     for name in names:
-        test_new_dataset(name, index, "_randomized_COVID")
+        test_new_dataset(name, index, "")
 
 ################################

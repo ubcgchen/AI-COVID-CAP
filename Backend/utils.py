@@ -15,6 +15,25 @@ import os
 
 random_seed = 42
 
+def calc_stratified_metrics(y_pred, y, day0_indicator):
+     # Reset index to align all Series
+     y = y.reset_index(drop=True)
+     y_pred = y_pred.reset_index(drop=True)
+     day0_indicator = day0_indicator.reset_index(drop=True)
+
+     # Patients who received intervention on day 0
+     mask_day0 = (day0_indicator == 1)
+     accuracy_day0 = accuracy_score(y[mask_day0], y_pred[mask_day0])
+
+     # Patients who did NOT receive intervention on day 0
+     mask_non_day0 = (day0_indicator == 0)
+     accuracy_non_day0 = accuracy_score(y[mask_non_day0], y_pred[mask_non_day0])
+
+     # Print results
+     print(f"Accuracy for patients who received intervention on Day 0: {accuracy_day0:.4f}")
+     print(f"Accuracy for patients who did not receive intervention on Day 0: {accuracy_non_day0:.4f}")
+
+
 def calc_metrics(y_pred, y_test, y_prob_positive):
      # Calculate the metrics for the model
      accuracy = accuracy_score(y_test, y_pred)
